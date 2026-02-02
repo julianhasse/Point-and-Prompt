@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diagnostic Assistant – Laboratory Results</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Red speech bubble icon (matches provided image) */
+    .point-prompt-icon {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .point-prompt-target {
+      cursor: pointer;
+    }
+    .point-prompt-target:hover {
+      background-color: rgba(59, 130, 246, 0.08);
+      outline: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .point-prompt-action {
+      cursor: pointer;
+      position: relative;
+    }
+    .point-prompt-action:hover::after {
+      content: "Ask AI";
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 2px;
+      padding: 2px 6px;
+      font-size: 10px;
+      color: #fff;
+      background: #dc2626;
+      border-radius: 4px;
+      white-space: nowrap;
+      z-index: 10;
+    }
+    /* Context menu positioning */
+    #point-prompt-menu {
+      z-index: 9999;
+    }
+    /* Chat panel slide-in */
+    #chat-panel {
+      transition: transform 0.25s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800">
+  <!-- Top header -->
+  <header class="bg-white border-b border-gray-200 shadow-sm">
+    <div class="flex items-center justify-between px-4 py-2">
+      <div class="flex items-center gap-4">
+        <span class="font-semibold text-gray-700">Diagnostic Assistant</span>
+        <nav class="flex gap-1">
+          <a href="#" class="px-3 py-1.5 rounded bg-blue-100 text-blue-800 font-medium text-sm">Laboratory Results</a>
+          <a href="#" class="px-3 py-1.5 rounded text-gray-600 hover:bg-gray-100 text-sm">Clinical Decision Support</a>
+          <a href="#" class="px-3 py-1.5 rounded text-gray-600 hover:bg-gray-100 text-sm">Oncology</a>
+          <a href="#" class="px-3 py-1.5 rounded text-gray-600 hover:bg-gray-100 text-sm">Add-On Testing</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-gray-600">Any Patient</span>
+        <span class="text-sm text-gray-500">00/00/0000</span>
+        <button type="button" class="p-1.5 rounded hover:bg-gray-100" title="Print">🖨️</button>
+        <button type="button" class="p-1.5 rounded hover:bg-gray-100" title="Refresh">🔄</button>
+        <button type="button" class="p-1.5 rounded hover:bg-gray-100">⋯</button>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 px-4 py-2 border-t border-gray-100">
+      <div class="flex items-center gap-2">
+        <button type="button" class="flex items-center gap-1.5 px-2 py-1 rounded bg-gray-100 text-gray-700 text-sm font-medium">Panel View</button>
+        <button type="button" class="flex items-center gap-1.5 px-2 py-1 rounded text-gray-600 hover:bg-gray-100 text-sm">Clinical View</button>
+      </div>
+      <a href="#" class="text-sm text-blue-600 hover:underline">Orders in Progress</a>
+      <a href="#" class="text-sm text-blue-600 hover:underline">SmartTrends</a>
+    </div>
+  </header>
+
+  <div class="flex">
+    <!-- Left sidebar -->
+    <aside class="w-56 bg-white border-r border-gray-200 shrink-0 flex flex-col">
+      <div class="p-3 border-b border-gray-100 flex items-center justify-between">
+        <span class="text-sm font-medium text-gray-700">Filters</span>
+        <button type="button" class="text-gray-400 hover:text-gray-600" title="Collapse">‹</button>
+      </div>
+      <div class="p-3 flex gap-2">
+        <button type="button" class="text-sm text-blue-600 hover:underline">Edit Filters</button>
+        <button type="button" class="text-sm text-gray-500 hover:underline">Reset</button>
+      </div>
+      <div class="px-3 pb-3 space-y-3">
+        <label class="flex items-center justify-between cursor-pointer">
+          <span class="text-sm text-gray-700">Abnormal Results</span>
+          <input type="checkbox" checked class="rounded border-gray-300" />
+        </label>
+        <label class="flex items-center justify-between cursor-pointer">
+          <span class="text-sm text-gray-700">Added by Labcorp</span>
+          <input type="checkbox" checked class="rounded border-gray-300" />
+        </label>
+        <label class="flex items-center justify-between cursor-pointer">
+          <span class="text-sm text-gray-700">Bookmarked</span>
+          <input type="checkbox" checked class="rounded border-gray-300" />
+        </label>
+        <label class="flex items-center justify-between cursor-pointer">
+          <span class="text-sm text-gray-700">New Results</span>
+          <input type="checkbox" checked class="rounded border-gray-300" />
+        </label>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 p-4 flex flex-col min-w-0">
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col flex-1 overflow-hidden">
+        <!-- Toolbar -->
+        <div class="p-3 border-b border-gray-200 flex flex-wrap items-center gap-3">
+          <button type="button" class="point-prompt-target inline-flex items-center gap-2 px-3 py-1.5 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700" data-selection-type="trend_chart" data-context="View in SmartTrends – laboratory results" data-snippet="SmartTrends view for current results">View in SmartTrends™</button>
+          <input type="search" placeholder="Search" class="px-3 py-1.5 border border-gray-300 rounded text-sm w-48" />
+          <div class="flex items-center gap-1 text-sm text-gray-600">
+            <input type="text" placeholder="From" class="px-2 py-1 border border-gray-300 rounded w-28 text-sm" />
+            <span>–</span>
+            <input type="text" placeholder="To" class="px-2 py-1 border border-gray-300 rounded w-28 text-sm" />
+          </div>
+          <a href="#" class="text-sm text-blue-600 hover:underline flex items-center gap-1">Similar Records</a>
+          <span class="text-xs text-gray-500 ml-2">Click any result cell to open Point and Prompt</span>
+          <button type="button" id="open-menu-test" class="text-xs text-blue-600 hover:underline ml-2" onclick="if(window.openPointPromptMenu){window.openPointPromptMenu();} return false;">Open menu (test)</button>
+        </div>
+
+        <!-- Lab results table -->
+        <div class="overflow-auto flex-1" id="lab-results-container">
+          <table class="w-full text-sm" id="lab-results-table">
+            <thead class="bg-gray-50 border-b border-gray-200 sticky top-0">
+              <tr>
+                <th class="text-left py-2 px-3 w-8"><input type="checkbox" class="rounded border-gray-300" /></th>
+                <th class="text-left py-2 px-3 font-medium text-gray-700">Date Collected</th>
+                <th class="text-left py-2 px-3 font-medium text-gray-700">Test Name</th>
+                <th class="text-left py-2 px-3 font-medium text-gray-700">Status</th>
+                <th class="text-left py-2 px-3 font-medium text-gray-700">Source</th>
+                <th class="text-left py-2 px-3 font-medium text-gray-700">Value</th>
+                <th class="text-left py-2 px-3 font-medium text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-1" data-context="Comp. Metabolic Panel (14) – 01/15/2025, Labcorp, Final" data-snippet="Test: Comp. Metabolic Panel (14), Date: 01/15/2025 08:30 AM, Status: Final, Source: Labcorp, Value: 14 components">
+                <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 01/15/2025 08:30 AM" data-snippet="Date Collected: 01/15/2025 08:30 AM">01/15/2025 08:30 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Comp. Metabolic Panel (14)" data-snippet="Test Name: Comp. Metabolic Panel (14)">Comp. Metabolic Panel (14)</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Value: 14 components" data-snippet="Value: 14 components">14 components</td>
+                <td class="py-2 px-3">
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="Comp. Metabolic Panel (14) – 01/15/2025">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="Comp. Metabolic Panel (14) – 01/15/2025">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="Comp. Metabolic Panel (14) – 01/15/2025">🧪</button>
+                </td>
+              </tr>
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-2" data-context="Albumin/Creatinine Ratio, Urine – 01/15/2025, Demo EHR, Final" data-snippet="Test: Albumin/Creatinine Ratio, Urine, Date: 01/15/2025 08:30 AM, Status: Final, Source: Demo EHR, Value: 12 mg/g">
+                <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 01/15/2025 08:30 AM" data-snippet="Date Collected: 01/15/2025 08:30 AM">01/15/2025 08:30 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Albumin/Creatinine Ratio, Urine" data-snippet="Test Name: Albumin/Creatinine Ratio, Urine">Albumin/Creatinine Ratio, Urine</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Demo EHR" data-snippet="Source: Demo EHR">Demo EHR</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 12 mg/g" data-snippet="Value: 12 mg/g">12 mg/g</td>
+                <td class="py-2 px-3">
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="Albumin/Creatinine Ratio, Urine – 01/15/2025">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="Albumin/Creatinine Ratio, Urine – 01/15/2025">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="Albumin/Creatinine Ratio, Urine – 01/15/2025">🧪</button>
+                </td>
+              </tr>
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-3" data-context="Hemoglobin A1c – 01/10/2025, Labcorp, Final" data-snippet="Test: Hemoglobin A1c, Date: 01/10/2025 09:00 AM, Status: Final, Source: Labcorp, Value: 5.8%">
+                <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 01/10/2025 09:00 AM" data-snippet="Date Collected: 01/10/2025 09:00 AM">01/10/2025 09:00 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Hemoglobin A1c" data-snippet="Test Name: Hemoglobin A1c">Hemoglobin A1c</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 5.8%" data-snippet="Value: 5.8%">5.8%</td>
+                <td class="py-2 px-3">
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="Hemoglobin A1c – 01/10/2025">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="Hemoglobin A1c – 01/10/2025">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="Hemoglobin A1c – 01/10/2025">🧪</button>
+                </td>
+              </tr>
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-4" data-context="Glucose, Serum – 01/10/2025, Labcorp, Final" data-snippet="Test: Glucose, Serum, Date: 01/10/2025 09:00 AM, Status: Final, Source: Labcorp, Value: 98 mg/dL">
+                <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 01/10/2025 09:00 AM" data-snippet="Date Collected: 01/10/2025 09:00 AM">01/10/2025 09:00 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Glucose, Serum" data-snippet="Test Name: Glucose, Serum">Glucose, Serum</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 98 mg/dL" data-snippet="Value: 98 mg/dL">98 mg/dL</td>
+                <td class="py-2 px-3">
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="Glucose, Serum – 01/10/2025">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="Glucose, Serum – 01/10/2025">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="Glucose, Serum – 01/10/2025">🧪</button>
+                </td>
+              </tr>
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-5" data-context="TSH – 12/28/2024, Demo EHR, Final" data-snippet="Test: TSH, Date: 12/28/2024 07:45 AM, Status: Final, Source: Demo EHR, Value: 2.4 mIU/L">
+                <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 12/28/2024 07:45 AM" data-snippet="Date Collected: 12/28/2024 07:45 AM">12/28/2024 07:45 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="TSH" data-snippet="Test Name: TSH">TSH</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Demo EHR" data-snippet="Source: Demo EHR">Demo EHR</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 2.4 mIU/L" data-snippet="Value: 2.4 mIU/L">2.4 mIU/L</td>
+                <td class="py-2 px-3">
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="TSH – 12/28/2024">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="TSH – 12/28/2024">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="TSH – 12/28/2024">🧪</button>
+                </td>
+              </tr>
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-6" data-context="Iron – 12/28/2024, Labcorp, Final" data-snippet="Test: Iron, Date: 12/28/2024 07:45 AM, Status: Final, Source: Labcorp, Value: 85 µg/dL">
+                <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 12/28/2024 07:45 AM" data-snippet="Date Collected: 12/28/2024 07:45 AM">12/28/2024 07:45 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Iron" data-snippet="Test Name: Iron">Iron</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 85 µg/dL" data-snippet="Value: 85 µg/dL">85 µg/dL</td>
+                <td class="py-2 px-3">
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="Iron – 12/28/2024">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="Iron – 12/28/2024">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="Iron – 12/28/2024">🧪</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="p-2 border-t border-gray-200 flex items-center justify-end gap-1 text-sm text-gray-600">
+          <span>Viewing page 1 of 4</span>
+          <button type="button" class="px-2 py-1 rounded bg-gray-100 font-medium">1</button>
+          <button type="button" class="px-2 py-1 rounded hover:bg-gray-100">2</button>
+          <button type="button" class="px-2 py-1 rounded hover:bg-gray-100">3</button>
+          <button type="button" class="px-2 py-1 rounded hover:bg-gray-100">›</button>
+          <button type="button" class="px-2 py-1 rounded hover:bg-gray-100">»</button>
+        </div>
+      </div>
+
+      <div class="mt-3 flex justify-center">
+        <button type="button" class="point-prompt-target inline-flex items-center gap-2 px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700" data-selection-type="trend_chart" data-context="View in SmartTrends – laboratory results" data-snippet="SmartTrends view for current results">View in SmartTrends™</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Point and Prompt context menu (right-click) -->
+  <div id="point-prompt-menu" class="fixed hidden bg-white rounded-lg border border-gray-200 shadow-xl p-3 w-80" role="dialog" aria-label="Point and Prompt">
+    <div class="flex items-center gap-2 mb-3">
+      <!-- Red speech bubble icon (matches provided image: bubble with tail, three lines) -->
+      <svg class="point-prompt-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-3 3v-3H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M5 18v2l-2-2H5" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <line x1="8" y1="9" x2="16" y2="9" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/>
+        <line x1="8" y1="12" x2="14" y2="12" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/>
+        <line x1="8" y1="15" x2="11" y2="15" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="font-semibold text-gray-800">Point and Prompt</span>
+    </div>
+    <p id="point-prompt-context" class="text-xs text-gray-500 mb-2 truncate" title=""></p>
+    <input type="text" id="point-prompt-input" placeholder="Ask about this result..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm mb-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+    <div class="flex justify-end gap-2">
+      <button type="button" id="point-prompt-cancel" class="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+      <button type="button" id="point-prompt-submit" class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Submit</button>
+    </div>
+  </div>
+
+  <!-- Chat panel (opens after submit) -->
+  <div id="chat-panel" class="fixed top-0 right-0 h-full w-96 max-w-full bg-white border-l border-gray-200 shadow-xl flex flex-col z-50 transform translate-x-full">
+    <div class="p-3 border-b border-gray-200 bg-gray-50">
+      <div class="flex items-center justify-between mb-2">
+        <span class="font-semibold text-gray-800">Point and Prompt</span>
+        <button type="button" id="chat-panel-close" class="p-1 rounded hover:bg-gray-200" aria-label="Close">✕</button>
+      </div>
+      <p class="text-xs text-gray-600 mb-1">Asking about: <span id="chat-context-badge" class="font-medium text-gray-800 truncate block"></span></p>
+      <button type="button" id="chat-new-selection" class="text-xs text-blue-600 hover:underline">New selection</button>
+    </div>
+    <div id="chat-messages" class="flex-1 overflow-auto p-3 space-y-3"></div>
+    <div id="chat-loading" class="hidden px-3 py-2 text-sm text-gray-500 border-t border-gray-100">Thinking...</div>
+    <div id="chat-error" class="hidden px-3 py-2 border-t border-red-100 bg-red-50 text-sm text-red-700">
+      <span id="chat-error-text"></span>
+      <button type="button" id="chat-try-again" class="mt-2 block text-blue-600 hover:underline font-medium">Try again</button>
+    </div>
+    <div class="p-3 border-t border-gray-200">
+      <input type="text" id="chat-follow-up" placeholder="Follow-up question..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      window.openPointPromptMenu = function () {
+        var m = document.getElementById('point-prompt-menu');
+        var c = document.getElementById('point-prompt-context');
+        var i = document.getElementById('point-prompt-input');
+        if (!m || !c || !i) return;
+        c.textContent = 'Context: Test – Hemoglobin A1c: 5.8%';
+        c.title = 'Test – Hemoglobin A1c: 5.8%';
+        i.value = '';
+        m.classList.remove('hidden');
+        m.style.display = 'block';
+        m.style.left = '200px';
+        m.style.top = '200px';
+        i.focus();
+      };
+      var openMenuBtn = document.getElementById('open-menu-test');
+      if (openMenuBtn) openMenuBtn.onclick = function (e) { e.preventDefault(); window.openPointPromptMenu(); return false; };
+
+      var menu = document.getElementById('point-prompt-menu');
+      var contextEl = document.getElementById('point-prompt-context');
+      var inputEl = document.getElementById('point-prompt-input');
+      var cancelBtn = document.getElementById('point-prompt-cancel');
+      var submitBtn = document.getElementById('point-prompt-submit');
+      var chatPanel = document.getElementById('chat-panel');
+      var chatMessages = document.getElementById('chat-messages');
+      var chatContextBadge = document.getElementById('chat-context-badge');
+      var chatCloseBtn = document.getElementById('chat-panel-close');
+      var chatNewSelection = document.getElementById('chat-new-selection');
+      var chatLoading = document.getElementById('chat-loading');
+      var chatError = document.getElementById('chat-error');
+      var chatErrorText = document.getElementById('chat-error-text');
+      var chatTryAgain = document.getElementById('chat-try-again');
+      var followUpInput = document.getElementById('chat-follow-up');
+      if (!menu || !contextEl || !inputEl) return;
+
+      var lastContextLabel = '';
+      var currentContextPayload = null;
+      var conversationHistory = [];
+
+      function buildContextPayload(targetEl) {
+        var type = (targetEl && targetEl.dataset.selectionType) || 'result_cell';
+        var label = (targetEl && (targetEl.dataset.context || targetEl.textContent.trim())) || 'Selected data';
+        var snippet = (targetEl && targetEl.dataset.snippet) || label;
+        var ids = (targetEl && targetEl.dataset.rowId) ? [targetEl.dataset.rowId] : [];
+        if (targetEl && targetEl.dataset.action) {
+          var rowCtx = targetEl.dataset.rowContext || '';
+          label = (targetEl.dataset.action === 'report' ? 'Report: ' : targetEl.dataset.action === 'trend' ? 'Trend: ' : 'Add-on: ') + rowCtx;
+          snippet = label;
+        }
+        return {
+          patient: { patientId: 'demo-patient-1', displayName: 'Any Patient' },
+          selection: { type: type, ids: ids, label: label },
+          snippet: snippet,
+          emr: { encounterId: 'enc-1', currentView: 'laboratory_results', dateRange: { from: '01/01/2025', to: '01/31/2025' } }
+        };
+      }
+
+      function showMenu(x, y, contextLabel, targetEl) {
+        lastContextLabel = contextLabel || 'Selected data';
+        currentContextPayload = targetEl ? buildContextPayload(targetEl) : buildContextPayload(null);
+        currentContextPayload.selection.label = lastContextLabel;
+        currentContextPayload.snippet = currentContextPayload.snippet || lastContextLabel;
+        contextEl.textContent = lastContextLabel;
+        contextEl.title = lastContextLabel;
+        inputEl.value = '';
+        menu.classList.remove('hidden');
+        menu.style.display = 'block';
+        menu.style.left = Math.min(x, window.innerWidth - 336) + 'px';
+        menu.style.top = Math.min(y, window.innerHeight - 200) + 'px';
+        inputEl.focus();
+      }
+
+      function hideMenu() {
+        menu.classList.add('hidden');
+        menu.style.display = '';
+      }
+
+      window.openPointPromptMenu = function () {
+        showMenu(200, 200, 'Test – Hemoglobin A1c: 5.8%', null);
+      };
+
+      function getAskApiUrl() {
+        var base = window.POINT_PROMPT_API_URL;
+        if (base !== undefined && base !== '') return (base.replace(/\/$/, '') + '/api/ask');
+        if (window.location.protocol === 'file:') return 'http://localhost:3001/api/ask';
+        return (window.location.origin || '') + '/api/ask';
+      }
+
+      function askPointAndPrompt(question, context, history) {
+        var url = getAskApiUrl();
+        return fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: question, context: context || null, history: history || [] })
+        }).then(function (res) {
+          return res.json().then(function (data) {
+            if (!res.ok) throw new Error(data.error || res.statusText || 'Request failed');
+            return data.reply;
+          });
+        }).catch(function (err) {
+          if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
+            return simulateReply(question, context, history);
+          }
+          throw err;
+        });
+      }
+
+      function simulateReply(question, context, history) {
+        return new Promise(function (resolve) {
+          setTimeout(function () {
+            var snippet = (context && context.snippet) || '';
+            var label = (context && context.selection && context.selection && context.selection.label) || '';
+            var reply = 'Based on your selection (' + (label || snippet) + '), here is a simulated reply. Start the server (npm start) and open http://localhost:3001/ for real AI answers.';
+            if (history && history.length > 0) reply = 'Follow-up: ' + reply;
+            resolve(reply);
+          }, 600);
+        });
+      }
+
+      function showChatLoading(show) {
+        if (chatLoading) chatLoading.classList.toggle('hidden', !show);
+        if (chatError) chatError.classList.add('hidden');
+      }
+
+      function showChatError(message) {
+        if (chatError) {
+          if (chatErrorText) chatErrorText.textContent = message || 'Something went wrong.';
+          chatError.classList.remove('hidden');
+        }
+        if (chatLoading) chatLoading.classList.add('hidden');
+      }
+
+      function openChatPanel(question, contextLabel) {
+        if (chatContextBadge) chatContextBadge.textContent = contextLabel || lastContextLabel;
+        chatMessages.innerHTML = '';
+        conversationHistory = [];
+        addMessage('user', question);
+        showChatLoading(true);
+        chatPanel.classList.remove('translate-x-full');
+        askPointAndPrompt(question, currentContextPayload, []).then(function (response) {
+          showChatLoading(false);
+          addMessage('assistant', response);
+          conversationHistory.push({ role: 'user', content: question });
+          conversationHistory.push({ role: 'assistant', content: response });
+          followUpInput.focus();
+        }).catch(function (err) {
+          showChatError(err.message || 'Request failed.');
+          addMessage('assistant', '(Error – use Try again below)');
+          if (chatTryAgain) {
+            chatTryAgain.onclick = function () {
+              chatError.classList.add('hidden');
+              sendFollowUp(question);
+            };
+          }
+        });
+      }
+
+      function addMessage(role, text) {
+        var div = document.createElement('div');
+        div.className = role === 'user' ? 'text-right' : 'text-left';
+        var bubble = document.createElement('div');
+        bubble.className = 'inline-block max-w-[85%] px-3 py-2 rounded-lg text-sm ' +
+          (role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800');
+        bubble.textContent = text;
+        div.appendChild(bubble);
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      function submitPrompt() {
+        var question = inputEl.value.trim();
+        if (!question) return;
+        hideMenu();
+        openChatPanel(question, lastContextLabel);
+      }
+
+      function sendFollowUp(question) {
+        if (chatError) chatError.classList.add('hidden');
+        addMessage('user', question);
+        showChatLoading(true);
+        askPointAndPrompt(question, currentContextPayload, conversationHistory).then(function (response) {
+          showChatLoading(false);
+          addMessage('assistant', response);
+          conversationHistory.push({ role: 'user', content: question });
+          conversationHistory.push({ role: 'assistant', content: response });
+          followUpInput.value = '';
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+          followUpInput.focus();
+        }).catch(function (err) {
+          showChatError(err.message || 'Request failed.');
+          if (chatTryAgain) {
+            chatTryAgain.onclick = function () {
+              chatError.classList.add('hidden');
+              sendFollowUp(question);
+            };
+          }
+        });
+      }
+
+      function getTargetForClick(e) {
+        var action = e.target.closest('.point-prompt-action');
+        if (action) return action;
+        var target = e.target.closest('.point-prompt-target');
+        if (target) return target;
+        return null;
+      }
+
+      function handlePointPromptActivate(e) {
+        var target = getTargetForClick(e);
+        if (target) {
+          e.preventDefault();
+          e.stopPropagation();
+          var label = target.dataset.context || (target.dataset.rowContext ? (target.dataset.action + ': ' + target.dataset.rowContext) : target.textContent.trim());
+          showMenu(e.clientX, e.clientY, label, target);
+        }
+      }
+
+      document.addEventListener('click', handlePointPromptActivate, true);
+      document.addEventListener('click', function (e) {
+        if (e.target.closest && (e.target.closest('.point-prompt-target') || e.target.closest('.point-prompt-action'))) return;
+        if (menu.contains(e.target)) return;
+        if (e.target.id === 'open-menu-test') return;
+        hideMenu();
+      });
+
+      cancelBtn.addEventListener('click', function (e) { e.stopPropagation(); hideMenu(); });
+      submitBtn.addEventListener('click', function (e) { e.stopPropagation(); submitPrompt(); });
+      inputEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submitPrompt(); }
+        if (e.key === 'Escape') hideMenu();
+      });
+      menu.addEventListener('click', function (e) { e.stopPropagation(); });
+
+      chatCloseBtn.addEventListener('click', function () { chatPanel.classList.add('translate-x-full'); });
+      if (chatNewSelection) chatNewSelection.addEventListener('click', function () { chatPanel.classList.add('translate-x-full'); });
+
+      followUpInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          var q = followUpInput.value.trim();
+          if (q) sendFollowUp(q);
+        }
+      });
+
+    })();
+  </script>
+</body>
+</html>
