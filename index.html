@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Diagnostic Assistant – Laboratory Results</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
     /* Red speech bubble icon (matches provided image) */
     .point-prompt-icon {
@@ -12,17 +15,21 @@
       height: 24px;
       flex-shrink: 0;
     }
+
     .point-prompt-target {
       cursor: pointer;
     }
+
     .point-prompt-target:hover {
       background-color: rgba(59, 130, 246, 0.08);
       outline: 1px solid rgba(59, 130, 246, 0.3);
     }
+
     .point-prompt-action {
       cursor: pointer;
       position: relative;
     }
+
     .point-prompt-action:hover::after {
       content: "Ask AI";
       position: absolute;
@@ -38,16 +45,92 @@
       white-space: nowrap;
       z-index: 10;
     }
+
     /* Context menu positioning */
     #point-prompt-menu {
       z-index: 9999;
     }
+
     /* Chat panel slide-in */
     #chat-panel {
       transition: transform 0.25s ease-out;
     }
+
+    /* Markdown in assistant messages */
+    .chat-message-assistant p {
+      margin: 0.5em 0;
+    }
+
+    .chat-message-assistant p:first-child {
+      margin-top: 0;
+    }
+
+    .chat-message-assistant p:last-child {
+      margin-bottom: 0;
+    }
+
+    .chat-message-assistant ul,
+    .chat-message-assistant ol {
+      margin: 0.5em 0;
+      padding-left: 1.25em;
+    }
+
+    .chat-message-assistant li {
+      margin: 0.25em 0;
+    }
+
+    .chat-message-assistant code {
+      background: rgba(0, 0, 0, 0.08);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+
+    .chat-message-assistant pre {
+      margin: 0.5em 0;
+      padding: 0.75em;
+      background: rgba(0, 0, 0, 0.06);
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+
+    .chat-message-assistant pre code {
+      background: none;
+      padding: 0;
+    }
+
+    .chat-message-assistant strong {
+      font-weight: 600;
+    }
+
+    .chat-message-assistant h1,
+    .chat-message-assistant h2,
+    .chat-message-assistant h3 {
+      margin: 0.75em 0 0.35em;
+      font-size: 1em;
+      font-weight: 600;
+    }
+
+    .chat-message-assistant h1:first-child,
+    .chat-message-assistant h2:first-child,
+    .chat-message-assistant h3:first-child {
+      margin-top: 0;
+    }
+
+    .chat-message-assistant a {
+      color: #2563eb;
+      text-decoration: underline;
+    }
+
+    .chat-message-assistant blockquote {
+      margin: 0.5em 0;
+      padding-left: 0.75em;
+      border-left: 3px solid rgba(0, 0, 0, 0.2);
+      color: #374151;
+    }
   </style>
 </head>
+
 <body class="bg-gray-100 min-h-screen text-gray-800">
   <!-- Top header -->
   <header class="bg-white border-b border-gray-200 shadow-sm">
@@ -71,8 +154,12 @@
     </div>
     <div class="flex items-center gap-4 px-4 py-2 border-t border-gray-100">
       <div class="flex items-center gap-2">
-        <button type="button" class="flex items-center gap-1.5 px-2 py-1 rounded bg-gray-100 text-gray-700 text-sm font-medium">Panel View</button>
-        <button type="button" class="flex items-center gap-1.5 px-2 py-1 rounded text-gray-600 hover:bg-gray-100 text-sm">Clinical View</button>
+        <button type="button"
+          class="flex items-center gap-1.5 px-2 py-1 rounded bg-gray-100 text-gray-700 text-sm font-medium">Panel
+          View</button>
+        <button type="button"
+          class="flex items-center gap-1.5 px-2 py-1 rounded text-gray-600 hover:bg-gray-100 text-sm">Clinical
+          View</button>
       </div>
       <a href="#" class="text-sm text-blue-600 hover:underline">Orders in Progress</a>
       <a href="#" class="text-sm text-blue-600 hover:underline">SmartTrends</a>
@@ -115,7 +202,10 @@
       <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col flex-1 overflow-hidden">
         <!-- Toolbar -->
         <div class="p-3 border-b border-gray-200 flex flex-wrap items-center gap-3">
-          <button type="button" class="point-prompt-target inline-flex items-center gap-2 px-3 py-1.5 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700" data-selection-type="trend_chart" data-context="View in SmartTrends – laboratory results" data-snippet="SmartTrends view for current results">View in SmartTrends™</button>
+          <button type="button"
+            class="point-prompt-target inline-flex items-center gap-2 px-3 py-1.5 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+            data-selection-type="trend_chart" data-context="View in SmartTrends – laboratory results"
+            data-snippet="SmartTrends view for current results">View in SmartTrends™</button>
           <input type="search" placeholder="Search" class="px-3 py-1.5 border border-gray-300 rounded text-sm w-48" />
           <div class="flex items-center gap-1 text-sm text-gray-600">
             <input type="text" placeholder="From" class="px-2 py-1 border border-gray-300 rounded w-28 text-sm" />
@@ -124,7 +214,9 @@
           </div>
           <a href="#" class="text-sm text-blue-600 hover:underline flex items-center gap-1">Similar Records</a>
           <span class="text-xs text-gray-500 ml-2">Click any result cell to open Point and Prompt</span>
-          <button type="button" id="open-menu-test" class="text-xs text-blue-600 hover:underline ml-2" onclick="if(window.openPointPromptMenu){window.openPointPromptMenu();} return false;">Open menu (test)</button>
+          <button type="button" id="open-menu-test" class="text-xs text-blue-600 hover:underline ml-2"
+            onclick="if(window.openPointPromptMenu){window.openPointPromptMenu();} return false;">Open menu
+            (test)</button>
         </div>
 
         <!-- Lab results table -->
@@ -142,82 +234,168 @@
               </tr>
             </thead>
             <tbody>
-              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-1" data-context="Comp. Metabolic Panel (14) – 01/15/2025, Labcorp, Final" data-snippet="Test: Comp. Metabolic Panel (14), Date: 01/15/2025 08:30 AM, Status: Final, Source: Labcorp, Value: 14 components">
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row"
+                data-row-id="row-1" data-context="Comp. Metabolic Panel (14) – 01/15/2025, Labcorp, Final"
+                data-snippet="Test: Comp. Metabolic Panel (14), Date: 01/15/2025 08:30 AM, Status: Final, Source: Labcorp, Value: 14 components">
                 <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 01/15/2025 08:30 AM" data-snippet="Date Collected: 01/15/2025 08:30 AM">01/15/2025 08:30 AM</td>
-                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Comp. Metabolic Panel (14)" data-snippet="Test Name: Comp. Metabolic Panel (14)">Comp. Metabolic Panel (14)</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
-                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Value: 14 components" data-snippet="Value: 14 components">14 components</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Date: 01/15/2025 08:30 AM" data-snippet="Date Collected: 01/15/2025 08:30 AM">01/15/2025
+                  08:30 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell"
+                  data-context="Comp. Metabolic Panel (14)" data-snippet="Test Name: Comp. Metabolic Panel (14)">Comp.
+                  Metabolic Panel (14)</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final"
+                  data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell"
+                  data-context="Value: 14 components" data-snippet="Value: 14 components">14 components</td>
                 <td class="py-2 px-3">
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="Comp. Metabolic Panel (14) – 01/15/2025">📄</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="Comp. Metabolic Panel (14) – 01/15/2025">🕐</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="Comp. Metabolic Panel (14) – 01/15/2025">🧪</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report"
+                    data-selection-type="report_section" data-action="report"
+                    data-row-context="Comp. Metabolic Panel (14) – 01/15/2025">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend"
+                    data-selection-type="trend_chart" data-action="trend"
+                    data-row-context="Comp. Metabolic Panel (14) – 01/15/2025">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on"
+                    data-selection-type="data_point" data-action="add-on"
+                    data-row-context="Comp. Metabolic Panel (14) – 01/15/2025">🧪</button>
                 </td>
               </tr>
-              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-2" data-context="Albumin/Creatinine Ratio, Urine – 01/15/2025, Demo EHR, Final" data-snippet="Test: Albumin/Creatinine Ratio, Urine, Date: 01/15/2025 08:30 AM, Status: Final, Source: Demo EHR, Value: 12 mg/g">
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row"
+                data-row-id="row-2" data-context="Albumin/Creatinine Ratio, Urine – 01/15/2025, Demo EHR, Final"
+                data-snippet="Test: Albumin/Creatinine Ratio, Urine, Date: 01/15/2025 08:30 AM, Status: Final, Source: Demo EHR, Value: 12 mg/g">
                 <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 01/15/2025 08:30 AM" data-snippet="Date Collected: 01/15/2025 08:30 AM">01/15/2025 08:30 AM</td>
-                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Albumin/Creatinine Ratio, Urine" data-snippet="Test Name: Albumin/Creatinine Ratio, Urine">Albumin/Creatinine Ratio, Urine</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Demo EHR" data-snippet="Source: Demo EHR">Demo EHR</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 12 mg/g" data-snippet="Value: 12 mg/g">12 mg/g</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Date: 01/15/2025 08:30 AM" data-snippet="Date Collected: 01/15/2025 08:30 AM">01/15/2025
+                  08:30 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell"
+                  data-context="Albumin/Creatinine Ratio, Urine"
+                  data-snippet="Test Name: Albumin/Creatinine Ratio, Urine">Albumin/Creatinine Ratio, Urine</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final"
+                  data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Source: Demo EHR" data-snippet="Source: Demo EHR">Demo EHR</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Value: 12 mg/g" data-snippet="Value: 12 mg/g">12 mg/g</td>
                 <td class="py-2 px-3">
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="Albumin/Creatinine Ratio, Urine – 01/15/2025">📄</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="Albumin/Creatinine Ratio, Urine – 01/15/2025">🕐</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="Albumin/Creatinine Ratio, Urine – 01/15/2025">🧪</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report"
+                    data-selection-type="report_section" data-action="report"
+                    data-row-context="Albumin/Creatinine Ratio, Urine – 01/15/2025">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend"
+                    data-selection-type="trend_chart" data-action="trend"
+                    data-row-context="Albumin/Creatinine Ratio, Urine – 01/15/2025">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on"
+                    data-selection-type="data_point" data-action="add-on"
+                    data-row-context="Albumin/Creatinine Ratio, Urine – 01/15/2025">🧪</button>
                 </td>
               </tr>
-              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-3" data-context="Hemoglobin A1c – 01/10/2025, Labcorp, Final" data-snippet="Test: Hemoglobin A1c, Date: 01/10/2025 09:00 AM, Status: Final, Source: Labcorp, Value: 5.8%">
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row"
+                data-row-id="row-3" data-context="Hemoglobin A1c – 01/10/2025, Labcorp, Final"
+                data-snippet="Test: Hemoglobin A1c, Date: 01/10/2025 09:00 AM, Status: Final, Source: Labcorp, Value: 5.8%">
                 <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 01/10/2025 09:00 AM" data-snippet="Date Collected: 01/10/2025 09:00 AM">01/10/2025 09:00 AM</td>
-                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Hemoglobin A1c" data-snippet="Test Name: Hemoglobin A1c">Hemoglobin A1c</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 5.8%" data-snippet="Value: 5.8%">5.8%</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Date: 01/10/2025 09:00 AM" data-snippet="Date Collected: 01/10/2025 09:00 AM">01/10/2025
+                  09:00 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell"
+                  data-context="Hemoglobin A1c" data-snippet="Test Name: Hemoglobin A1c">Hemoglobin A1c</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final"
+                  data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 5.8%"
+                  data-snippet="Value: 5.8%">5.8%</td>
                 <td class="py-2 px-3">
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="Hemoglobin A1c – 01/10/2025">📄</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="Hemoglobin A1c – 01/10/2025">🕐</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="Hemoglobin A1c – 01/10/2025">🧪</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report"
+                    data-selection-type="report_section" data-action="report"
+                    data-row-context="Hemoglobin A1c – 01/10/2025">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend"
+                    data-selection-type="trend_chart" data-action="trend"
+                    data-row-context="Hemoglobin A1c – 01/10/2025">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on"
+                    data-selection-type="data_point" data-action="add-on"
+                    data-row-context="Hemoglobin A1c – 01/10/2025">🧪</button>
                 </td>
               </tr>
-              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-4" data-context="Glucose, Serum – 01/10/2025, Labcorp, Final" data-snippet="Test: Glucose, Serum, Date: 01/10/2025 09:00 AM, Status: Final, Source: Labcorp, Value: 98 mg/dL">
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row"
+                data-row-id="row-4" data-context="Glucose, Serum – 01/10/2025, Labcorp, Final"
+                data-snippet="Test: Glucose, Serum, Date: 01/10/2025 09:00 AM, Status: Final, Source: Labcorp, Value: 98 mg/dL">
                 <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 01/10/2025 09:00 AM" data-snippet="Date Collected: 01/10/2025 09:00 AM">01/10/2025 09:00 AM</td>
-                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Glucose, Serum" data-snippet="Test Name: Glucose, Serum">Glucose, Serum</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 98 mg/dL" data-snippet="Value: 98 mg/dL">98 mg/dL</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Date: 01/10/2025 09:00 AM" data-snippet="Date Collected: 01/10/2025 09:00 AM">01/10/2025
+                  09:00 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell"
+                  data-context="Glucose, Serum" data-snippet="Test Name: Glucose, Serum">Glucose, Serum</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final"
+                  data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Value: 98 mg/dL" data-snippet="Value: 98 mg/dL">98 mg/dL</td>
                 <td class="py-2 px-3">
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="Glucose, Serum – 01/10/2025">📄</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="Glucose, Serum – 01/10/2025">🕐</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="Glucose, Serum – 01/10/2025">🧪</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report"
+                    data-selection-type="report_section" data-action="report"
+                    data-row-context="Glucose, Serum – 01/10/2025">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend"
+                    data-selection-type="trend_chart" data-action="trend"
+                    data-row-context="Glucose, Serum – 01/10/2025">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on"
+                    data-selection-type="data_point" data-action="add-on"
+                    data-row-context="Glucose, Serum – 01/10/2025">🧪</button>
                 </td>
               </tr>
-              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-5" data-context="TSH – 12/28/2024, Demo EHR, Final" data-snippet="Test: TSH, Date: 12/28/2024 07:45 AM, Status: Final, Source: Demo EHR, Value: 2.4 mIU/L">
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row"
+                data-row-id="row-5" data-context="TSH – 12/28/2024, Demo EHR, Final"
+                data-snippet="Test: TSH, Date: 12/28/2024 07:45 AM, Status: Final, Source: Demo EHR, Value: 2.4 mIU/L">
                 <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 12/28/2024 07:45 AM" data-snippet="Date Collected: 12/28/2024 07:45 AM">12/28/2024 07:45 AM</td>
-                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="TSH" data-snippet="Test Name: TSH">TSH</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Demo EHR" data-snippet="Source: Demo EHR">Demo EHR</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 2.4 mIU/L" data-snippet="Value: 2.4 mIU/L">2.4 mIU/L</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Date: 12/28/2024 07:45 AM" data-snippet="Date Collected: 12/28/2024 07:45 AM">12/28/2024
+                  07:45 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell"
+                  data-context="TSH" data-snippet="Test Name: TSH">TSH</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final"
+                  data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Source: Demo EHR" data-snippet="Source: Demo EHR">Demo EHR</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Value: 2.4 mIU/L" data-snippet="Value: 2.4 mIU/L">2.4 mIU/L</td>
                 <td class="py-2 px-3">
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="TSH – 12/28/2024">📄</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="TSH – 12/28/2024">🕐</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="TSH – 12/28/2024">🧪</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report"
+                    data-selection-type="report_section" data-action="report"
+                    data-row-context="TSH – 12/28/2024">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend"
+                    data-selection-type="trend_chart" data-action="trend"
+                    data-row-context="TSH – 12/28/2024">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on"
+                    data-selection-type="data_point" data-action="add-on"
+                    data-row-context="TSH – 12/28/2024">🧪</button>
                 </td>
               </tr>
-              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row" data-row-id="row-6" data-context="Iron – 12/28/2024, Labcorp, Final" data-snippet="Test: Iron, Date: 12/28/2024 07:45 AM, Status: Final, Source: Labcorp, Value: 85 µg/dL">
+              <tr class="point-prompt-target border-b border-gray-100 hover:bg-gray-50" data-selection-type="result_row"
+                data-row-id="row-6" data-context="Iron – 12/28/2024, Labcorp, Final"
+                data-snippet="Test: Iron, Date: 12/28/2024 07:45 AM, Status: Final, Source: Labcorp, Value: 85 µg/dL">
                 <td class="py-2 px-3"><input type="checkbox" class="rounded border-gray-300" /></td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Date: 12/28/2024 07:45 AM" data-snippet="Date Collected: 12/28/2024 07:45 AM">12/28/2024 07:45 AM</td>
-                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell" data-context="Iron" data-snippet="Test Name: Iron">Iron</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final" data-snippet="Status: Final">Final</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
-                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Value: 85 µg/dL" data-snippet="Value: 85 µg/dL">85 µg/dL</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Date: 12/28/2024 07:45 AM" data-snippet="Date Collected: 12/28/2024 07:45 AM">12/28/2024
+                  07:45 AM</td>
+                <td class="py-2 px-3 point-prompt-target font-medium" data-selection-type="result_cell"
+                  data-context="Iron" data-snippet="Test Name: Iron">Iron</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell" data-context="Status: Final"
+                  data-snippet="Status: Final">Final</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Source: Labcorp" data-snippet="Source: Labcorp">Labcorp</td>
+                <td class="py-2 px-3 point-prompt-target" data-selection-type="result_cell"
+                  data-context="Value: 85 µg/dL" data-snippet="Value: 85 µg/dL">85 µg/dL</td>
                 <td class="py-2 px-3">
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report" data-selection-type="report_section" data-action="report" data-row-context="Iron – 12/28/2024">📄</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend" data-selection-type="trend_chart" data-action="trend" data-row-context="Iron – 12/28/2024">🕐</button>
-                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on" data-selection-type="data_point" data-action="add-on" data-row-context="Iron – 12/28/2024">🧪</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Report"
+                    data-selection-type="report_section" data-action="report"
+                    data-row-context="Iron – 12/28/2024">📄</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Trend"
+                    data-selection-type="trend_chart" data-action="trend"
+                    data-row-context="Iron – 12/28/2024">🕐</button>
+                  <button type="button" class="point-prompt-action p-1 rounded hover:bg-gray-200" title="Add-on"
+                    data-selection-type="data_point" data-action="add-on"
+                    data-row-context="Iron – 12/28/2024">🧪</button>
                 </td>
               </tr>
             </tbody>
@@ -236,50 +414,64 @@
       </div>
 
       <div class="mt-3 flex justify-center">
-        <button type="button" class="point-prompt-target inline-flex items-center gap-2 px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700" data-selection-type="trend_chart" data-context="View in SmartTrends – laboratory results" data-snippet="SmartTrends view for current results">View in SmartTrends™</button>
+        <button type="button"
+          class="point-prompt-target inline-flex items-center gap-2 px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+          data-selection-type="trend_chart" data-context="View in SmartTrends – laboratory results"
+          data-snippet="SmartTrends view for current results">View in SmartTrends™</button>
       </div>
     </main>
   </div>
 
   <!-- Point and Prompt context menu (right-click) -->
-  <div id="point-prompt-menu" class="fixed hidden bg-white rounded-lg border border-gray-200 shadow-xl p-3 w-80" role="dialog" aria-label="Point and Prompt">
+  <div id="point-prompt-menu" class="fixed hidden bg-white rounded-lg border border-gray-200 shadow-xl p-3 w-80"
+    role="dialog" aria-label="Point and Prompt">
     <div class="flex items-center gap-2 mb-3">
       <!-- Red speech bubble icon (matches provided image: bubble with tail, three lines) -->
-      <svg class="point-prompt-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-3 3v-3H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M5 18v2l-2-2H5" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <line x1="8" y1="9" x2="16" y2="9" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/>
-        <line x1="8" y1="12" x2="14" y2="12" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/>
-        <line x1="8" y1="15" x2="11" y2="15" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/>
+      <svg class="point-prompt-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true">
+        <path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-3 3v-3H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#dc2626"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        <path d="M5 18v2l-2-2H5" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          fill="none" />
+        <line x1="8" y1="9" x2="16" y2="9" stroke="#dc2626" stroke-width="2" stroke-linecap="round" />
+        <line x1="8" y1="12" x2="14" y2="12" stroke="#dc2626" stroke-width="2" stroke-linecap="round" />
+        <line x1="8" y1="15" x2="11" y2="15" stroke="#dc2626" stroke-width="2" stroke-linecap="round" />
       </svg>
       <span class="font-semibold text-gray-800">Point and Prompt</span>
     </div>
     <p id="point-prompt-context" class="text-xs text-gray-500 mb-2 truncate" title=""></p>
-    <input type="text" id="point-prompt-input" placeholder="Ask about this result..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm mb-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+    <input type="text" id="point-prompt-input" placeholder="Ask about this result..."
+      class="w-full px-3 py-2 border border-gray-300 rounded text-sm mb-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
     <div class="flex justify-end gap-2">
-      <button type="button" id="point-prompt-cancel" class="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
-      <button type="button" id="point-prompt-submit" class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Submit</button>
+      <button type="button" id="point-prompt-cancel"
+        class="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+      <button type="button" id="point-prompt-submit"
+        class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Submit</button>
     </div>
   </div>
 
   <!-- Chat panel (opens after submit) -->
-  <div id="chat-panel" class="fixed top-0 right-0 h-full w-96 max-w-full bg-white border-l border-gray-200 shadow-xl flex flex-col z-50 transform translate-x-full">
+  <div id="chat-panel"
+    class="fixed top-0 right-0 h-full w-96 max-w-full bg-white border-l border-gray-200 shadow-xl flex flex-col z-50 transform translate-x-full">
     <div class="p-3 border-b border-gray-200 bg-gray-50">
       <div class="flex items-center justify-between mb-2">
         <span class="font-semibold text-gray-800">Point and Prompt</span>
         <button type="button" id="chat-panel-close" class="p-1 rounded hover:bg-gray-200" aria-label="Close">✕</button>
       </div>
-      <p class="text-xs text-gray-600 mb-1">Asking about: <span id="chat-context-badge" class="font-medium text-gray-800 truncate block"></span></p>
+      <p class="text-xs text-gray-600 mb-1">Asking about: <span id="chat-context-badge"
+          class="font-medium text-gray-800 truncate block"></span></p>
       <button type="button" id="chat-new-selection" class="text-xs text-blue-600 hover:underline">New selection</button>
     </div>
     <div id="chat-messages" class="flex-1 overflow-auto p-3 space-y-3"></div>
     <div id="chat-loading" class="hidden px-3 py-2 text-sm text-gray-500 border-t border-gray-100">Thinking...</div>
     <div id="chat-error" class="hidden px-3 py-2 border-t border-red-100 bg-red-50 text-sm text-red-700">
       <span id="chat-error-text"></span>
-      <button type="button" id="chat-try-again" class="mt-2 block text-blue-600 hover:underline font-medium">Try again</button>
+      <button type="button" id="chat-try-again" class="mt-2 block text-blue-600 hover:underline font-medium">Try
+        again</button>
     </div>
     <div class="p-3 border-t border-gray-200">
-      <input type="text" id="chat-follow-up" placeholder="Follow-up question..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+      <input type="text" id="chat-follow-up" placeholder="Follow-up question..."
+        class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
     </div>
   </div>
 
@@ -447,7 +639,21 @@
         var bubble = document.createElement('div');
         bubble.className = 'inline-block max-w-[85%] px-3 py-2 rounded-lg text-sm ' +
           (role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800');
-        bubble.textContent = text;
+        if (role === 'assistant' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+          try {
+            var rawHtml = typeof marked.parse === 'function' ? marked.parse(text || '') : text || '';
+            if (typeof rawHtml === 'string') {
+              bubble.innerHTML = DOMPurify.sanitize(rawHtml);
+              bubble.classList.add('chat-message-assistant');
+            } else {
+              bubble.textContent = text || '';
+            }
+          } catch (err) {
+            bubble.textContent = text || '';
+          }
+        } else {
+          bubble.textContent = text || '';
+        }
         div.appendChild(bubble);
         chatMessages.appendChild(div);
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -530,4 +736,5 @@
     })();
   </script>
 </body>
+
 </html>
