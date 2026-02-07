@@ -1,0 +1,6 @@
+# Route /api/ask to the Netlify Function so the frontend can keep calling /api/ask
+[[redirects]]
+  from = "/api/ask"
+  to = "/.netlify/functions/ask"
+  status = 200
+  force = true

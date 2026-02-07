@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <title>Scan to Speak | Point and Prompt</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-surface: #f8fafc;
+      --bg-button: #3b82f6;
+      --bg-button-active: #dc2626;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-placeholder: #94a3b8;
+      --border-color: #e2e8f0;
+      --status-connecting: #f59e0b;
+      --status-connected: #10b981;
+      --status-disconnected: #ef4444;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #0f172a;
+        --bg-surface: #1e293b;
+        --bg-button: #3b82f6;
+        --bg-button-active: #dc2626;
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --text-placeholder: #64748b;
+        --border-color: #334155;
+        --status-connecting: #f59e0b;
+        --status-connected: #10b981;
+        --status-disconnected: #ef4444;
+      }
+    }
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      touch-action: manipulation;
+      overscroll-behavior: none;
+    }
+
+    .surface {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .status-badge.connecting {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: var(--status-connecting);
+    }
+
+    .status-badge.connected {
+      background-color: rgba(16, 185, 129, 0.15);
+      color: var(--status-connected);
+    }
+
+    .status-badge.disconnected {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: var(--status-disconnected);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    .status-badge.connecting .status-dot {
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .transcript-area {
+      background-color: var(--bg-surface);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 100px;
+      font-size: 16px;
+      line-height: 1.6;
+      transition: border-color 0.2s ease;
+    }
+
+    .transcript-area.active {
+      border-color: var(--bg-button-active);
+    }
+
+    .transcript-area.empty {
+      color: var(--text-placeholder);
+      font-style: italic;
+    }
+
+    .transcript-area.has-content {
+      color: var(--text-primary);
+    }
+
+    .ptt-button {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--bg-button), #2563eb);
+      border: none;
+      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .ptt-button:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    .ptt-button:disabled {
+      background: linear-gradient(135deg, #64748b, #475569);
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .ptt-button.listening {
+      background: linear-gradient(135deg, var(--bg-button-active), #b91c1c);
+      box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+      animation: pulse-button 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-button {
+      0% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+      }
+      50% {
+        box-shadow: 0 0 0 20px rgba(220, 38, 38, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+      }
+    }
+
+    .ptt-icon {
+      width: 48px;
+      height: 48px;
+      color: white;
+      transition: transform 0.2s ease;
+    }
+
+    .ptt-button.listening .ptt-icon {
+      animation: icon-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes icon-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+    }
+
+    .toggle-label {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 28px;
+      background-color: #cbd5e1;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .toggle-switch.active {
+      background-color: var(--bg-button);
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 24px;
+      height: 24px;
+      background-color: white;
+      border-radius: 50%;
+      transition: transform 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .toggle-switch.active::after {
+      transform: translateX(20px);
+    }
+
+    .error-message {
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--status-disconnected);
+      border-radius: 12px;
+      padding: 16px;
+      color: var(--status-disconnected);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .instruction-text {
+      color: var(--text-secondary);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .reconnect-button {
+      background-color: var(--bg-button);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .reconnect-button:active {
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="p-4 border-b" style="border-color: var(--border-color);">
+    <div class="flex items-center justify-between max-w-md mx-auto">
+      <div class="flex items-center gap-2">
+        <svg class="w-6 h-6" style="color: var(--bg-button);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+        </svg>
+        <h1 class="text-lg font-semibold">Scan to Speak</h1>
+      </div>
+      <div id="status-badge" class="status-badge connecting">
+        <span class="status-dot"></span>
+        <span id="status-text">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col justify-center p-6 max-w-md mx-auto w-full gap-6">
+    <!-- Transcript Preview -->
+    <div id="transcript" class="transcript-area empty">
+      Press and hold to speak...
+    </div>
+
+    <!-- Push-to-Talk Button -->
+    <div class="flex flex-col items-center gap-4">
+      <button id="ptt-button" class="ptt-button" disabled>
+        <svg class="ptt-icon" id="mic-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+        </svg>
+      </button>
+      <p class="instruction-text">Press and hold to speak</p>
+    </div>
+
+    <!-- Auto-Submit Toggle -->
+    <div class="toggle-container">
+      <label for="auto-submit-toggle" class="toggle-label">Auto-submit to desktop</label>
+      <div id="auto-submit-toggle" class="toggle-switch" role="switch" aria-checked="false" tabindex="0"></div>
+    </div>
+
+    <!-- Error Messages -->
+    <div id="unsupported-browser" class="error-message" style="display: none;">
+      Speech recognition is not supported in this browser. Please use Chrome or Safari.
+    </div>
+
+    <div id="reconnect-container" style="display: none;" class="flex flex-col items-center gap-3">
+      <p class="instruction-text">Connection lost</p>
+      <button id="reconnect-button" class="reconnect-button">Tap to reconnect</button>
+    </div>
+  </main>
+
+  <script>
+    // Extract session ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session');
+
+    if (!sessionId) {
+      alert('No session ID provided. Please scan the QR code again.');
+    }
+
+    // DOM elements
+    const statusBadge = document.getElementById('status-badge');
+    const statusText = document.getElementById('status-text');
+    const transcriptArea = document.getElementById('transcript');
+    const pttButton = document.getElementById('ptt-button');
+    const autoSubmitToggle = document.getElementById('auto-submit-toggle');
+    const unsupportedBrowser = document.getElementById('unsupported-browser');
+    const reconnectContainer = document.getElementById('reconnect-container');
+    const reconnectButton = document.getElementById('reconnect-button');
+
+    // State
+    let ws = null;
+    let recognition = null;
+    let isListening = false;
+    let isConnected = false;
+    let autoSubmit = false;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 3;
+
+    // Check for Speech Recognition support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      unsupportedBrowser.style.display = 'block';
+      pttButton.disabled = true;
+    } else {
+      initializeSpeechRecognition();
+    }
+
+    // Initialize Speech Recognition
+    function initializeSpeechRecognition() {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        console.log('Speech recognition started');
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        const displayText = finalTranscript || interimTranscript;
+
+        if (displayText) {
+          transcriptArea.textContent = displayText;
+          transcriptArea.classList.remove('empty');
+          transcriptArea.classList.add('has-content');
+        }
+
+        // Send to WebSocket
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          if (finalTranscript) {
+            ws.send(JSON.stringify({
+              type: 'text',
+              payload: { text: finalTranscript, isFinal: true }
+            }));
+          } else if (interimTranscript) {
+            ws.send(JSON.stringify({
+              type: 'text',
+              payload: { text: interimTranscript, isFinal: false }
+            }));
+          }
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+
+        if (event.error === 'not-allowed') {
+          alert('Microphone access denied. Please enable microphone permissions in your browser settings.');
+        } else if (event.error === 'network') {
+          console.warn('Network error during speech recognition');
+        }
+
+        stopListening();
+      };
+
+      recognition.onend = () => {
+        console.log('Speech recognition ended');
+        stopListening();
+      };
+    }
+
+    // WebSocket connection
+    function connectWebSocket() {
+      if (!sessionId) return;
+
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${location.host}/ws?role=mobile&session=${sessionId}`;
+
+      updateStatus('connecting', 'Connecting...');
+      reconnectContainer.style.display = 'none';
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        updateStatus('connected', 'Connected to Desktop');
+        isConnected = true;
+        pttButton.disabled = false;
+        reconnectAttempts = 0;
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+
+          if (message.type === 'status') {
+            if (message.payload.event === 'partner_connected') {
+              updateStatus('connected', 'Connected to Desktop');
+              isConnected = true;
+              pttButton.disabled = false;
+            } else if (message.payload.event === 'partner_disconnected') {
+              updateStatus('disconnected', 'Desktop Disconnected');
+              isConnected = false;
+              pttButton.disabled = true;
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing WebSocket message:', err);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket closed');
+        updateStatus('disconnected', 'Disconnected');
+        isConnected = false;
+        pttButton.disabled = true;
+
+        // Show reconnect option
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          reconnectContainer.style.display = 'flex';
+        } else {
+          alert('Unable to reconnect. Please scan the QR code again.');
+        }
+      };
+    }
+
+    // Update status badge
+    function updateStatus(state, text) {
+      statusBadge.className = `status-badge ${state}`;
+      statusText.textContent = text;
+    }
+
+    // Start listening
+    function startListening() {
+      if (!recognition || !isConnected || isListening) return;
+
+      try {
+        recognition.start();
+        isListening = true;
+        pttButton.classList.add('listening');
+        transcriptArea.classList.add('active');
+        transcriptArea.textContent = 'Listening...';
+        transcriptArea.classList.remove('empty');
+        transcriptArea.classList.add('has-content');
+      } catch (err) {
+        console.error('Error starting recognition:', err);
+      }
+    }
+
+    // Stop listening
+    function stopListening() {
+      if (!recognition || !isListening) return;
+
+      try {
+        recognition.stop();
+      } catch (err) {
+        console.error('Error stopping recognition:', err);
+      }
+
+      isListening = false;
+      pttButton.classList.remove('listening');
+      transcriptArea.classList.remove('active');
+    }
+
+    // Push-to-talk button events
+    pttButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startListening();
+    });
+
+    pttButton.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      stopListening();
+    });
+
+    pttButton.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      stopListening();
+    });
+
+    pttButton.addEventListener('mousedown', (e) => {
+      if (e.button === 0) { // Left click only
+        startListening();
+      }
+    });
+
+    pttButton.addEventListener('mouseup', () => {
+      stopListening();
+    });
+
+    pttButton.addEventListener('mouseleave', () => {
+      if (isListening) {
+        stopListening();
+      }
+    });
+
+    // Auto-submit toggle
+    autoSubmitToggle.addEventListener('click', () => {
+      autoSubmit = !autoSubmit;
+      autoSubmitToggle.classList.toggle('active', autoSubmit);
+      autoSubmitToggle.setAttribute('aria-checked', autoSubmit);
+
+      // Send config to WebSocket
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'config',
+          payload: { autoSubmit }
+        }));
+      }
+    });
+
+    // Keyboard support for toggle
+    autoSubmitToggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        autoSubmitToggle.click();
+      }
+    });
+
+    // Reconnect button
+    reconnectButton.addEventListener('click', () => {
+      reconnectAttempts++;
+      connectWebSocket();
+    });
+
+    // Initialize WebSocket connection
+    if (sessionId && SpeechRecognition) {
+      connectWebSocket();
+    }
+
+    // Handle page visibility change
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && isListening) {
+        stopListening();
+      }
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (isListening) {
+        stopListening();
+      }
+      if (ws) {
+        ws.close();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -8,8 +8,268 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js"></script>
   <style>
-    /* Red speech bubble icon (matches provided image) */
+    /* ===== THEME VARIABLES ===== */
+    :root {
+      /* Light theme (default) */
+      --bg-primary: #f3f4f6;
+      --bg-surface: #ffffff;
+      --bg-surface-hover: #f9fafb;
+      --bg-surface-alt: #f9fafb;
+      --bg-header: #ffffff;
+      --bg-sidebar: #ffffff;
+      --bg-input: #ffffff;
+      --bg-table-header: #f9fafb;
+      --bg-table-hover: #f9fafb;
+      --bg-gray-100: #f3f4f6;
+      --bg-gray-50: #f9fafb;
+      --bg-blue-100: #dbeafe;
+
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --text-tertiary: #9ca3af;
+      --text-heading: #374151;
+      --text-on-blue: #1e40af;
+
+      --border-primary: #e5e7eb;
+      --border-secondary: #f3f4f6;
+      --border-subtle: #f3f4f6;
+
+      --accent-blue: #2563eb;
+      --accent-blue-hover: #1d4ed8;
+      --accent-red: #dc2626;
+
+      --assistant-code-bg: rgba(0, 0, 0, 0.08);
+      --assistant-pre-bg: rgba(0, 0, 0, 0.06);
+      --assistant-blockquote-border: rgba(0, 0, 0, 0.2);
+      --assistant-bubble-bg: #f3f4f6;
+      --assistant-bubble-text: #1f2937;
+    }
+
+    [data-theme="dark"] {
+      /* Dark theme - clinical/medical aesthetic */
+      --bg-primary: #0f172a;
+      --bg-surface: #1e293b;
+      --bg-surface-hover: #334155;
+      --bg-surface-alt: #1e293b;
+      --bg-header: #1e293b;
+      --bg-sidebar: #1e293b;
+      --bg-input: #334155;
+      --bg-table-header: #1e293b;
+      --bg-table-hover: #334155;
+      --bg-gray-100: #334155;
+      --bg-gray-50: #1e293b;
+      --bg-blue-100: #1e3a5f;
+
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-tertiary: #64748b;
+      --text-heading: #f1f5f9;
+      --text-on-blue: #93c5fd;
+
+      --border-primary: #334155;
+      --border-secondary: #1e293b;
+      --border-subtle: #334155;
+
+      --accent-blue: #3b82f6;
+      --accent-blue-hover: #2563eb;
+      --accent-red: #dc2626;
+
+      --assistant-code-bg: rgba(255, 255, 255, 0.1);
+      --assistant-pre-bg: rgba(255, 255, 255, 0.05);
+      --assistant-blockquote-border: rgba(255, 255, 255, 0.2);
+      --assistant-bubble-bg: #334155;
+      --assistant-bubble-text: #e2e8f0;
+    }
+
+    /* ===== THEME TRANSITIONS ===== */
+    body,
+    header,
+    aside,
+    main,
+    .bg-white,
+    .bg-gray-50,
+    .bg-gray-100,
+    input,
+    button,
+    table,
+    #point-prompt-menu,
+    #chat-panel,
+    .chat-message-assistant {
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+
+    /* ===== THEME OVERRIDES ===== */
+    [data-theme="dark"] body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    [data-theme="dark"] .bg-white {
+      background-color: var(--bg-surface) !important;
+    }
+
+    [data-theme="dark"] .bg-gray-50 {
+      background-color: var(--bg-gray-50) !important;
+    }
+
+    [data-theme="dark"] .bg-gray-100 {
+      background-color: var(--bg-gray-100) !important;
+    }
+
+    [data-theme="dark"] .bg-blue-100 {
+      background-color: var(--bg-blue-100) !important;
+    }
+
+    [data-theme="dark"] .text-gray-800,
+    [data-theme="dark"] .text-gray-700 {
+      color: var(--text-heading) !important;
+    }
+
+    [data-theme="dark"] .text-gray-600 {
+      color: var(--text-secondary) !important;
+    }
+
+    [data-theme="dark"] .text-gray-500 {
+      color: var(--text-tertiary) !important;
+    }
+
+    [data-theme="dark"] .text-blue-800 {
+      color: var(--text-on-blue) !important;
+    }
+
+    [data-theme="dark"] .border-gray-200,
+    [data-theme="dark"] .border-gray-300 {
+      border-color: var(--border-primary) !important;
+    }
+
+    [data-theme="dark"] .border-gray-100 {
+      border-color: var(--border-secondary) !important;
+    }
+
+    [data-theme="dark"] input[type="search"],
+    [data-theme="dark"] input[type="text"],
+    [data-theme="dark"] input[type="checkbox"] {
+      background-color: var(--bg-input);
+      border-color: var(--border-primary);
+      color: var(--text-primary);
+    }
+
+    [data-theme="dark"] input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    [data-theme="dark"] .hover\:bg-gray-100:hover,
+    [data-theme="dark"] .hover\:bg-gray-50:hover {
+      background-color: var(--bg-surface-hover) !important;
+    }
+
+    [data-theme="dark"] .hover\:bg-gray-200:hover {
+      background-color: var(--bg-gray-100) !important;
+    }
+
+    [data-theme="dark"] .bg-blue-600 {
+      background-color: var(--accent-blue) !important;
+    }
+
+    [data-theme="dark"] .hover\:bg-blue-700:hover {
+      background-color: var(--accent-blue-hover) !important;
+    }
+
+    [data-theme="dark"] .text-blue-600 {
+      color: var(--accent-blue) !important;
+    }
+
+    [data-theme="dark"] .chat-message-assistant {
+      background-color: var(--assistant-bubble-bg) !important;
+      color: var(--assistant-bubble-text) !important;
+    }
+
+    [data-theme="dark"] .chat-message-assistant code {
+      background: var(--assistant-code-bg);
+    }
+
+    [data-theme="dark"] .chat-message-assistant pre {
+      background: var(--assistant-pre-bg);
+    }
+
+    [data-theme="dark"] .chat-message-assistant blockquote {
+      border-left-color: var(--assistant-blockquote-border);
+      color: var(--text-secondary);
+    }
+
+    [data-theme="dark"] .chat-message-assistant a {
+      color: var(--accent-blue);
+    }
+
+    /* Scan to Speak modal dark theme */
+    [data-theme="dark"] #scan-to-speak-modal > div {
+      background-color: var(--bg-surface);
+      border-color: var(--border-primary);
+    }
+
+    [data-theme="dark"] .bg-green-100 {
+      background-color: #064e3b !important;
+    }
+
+    [data-theme="dark"] .text-green-700 {
+      color: #6ee7b7 !important;
+    }
+
+    /* ===== THEME TOGGLE BUTTON ===== */
+    #theme-toggle {
+      position: relative;
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: var(--bg-gray-100);
+      border: 1px solid var(--border-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+
+    #theme-toggle:hover {
+      background: var(--bg-surface-hover);
+      transform: scale(1.05);
+    }
+
+    #theme-toggle:active {
+      transform: scale(0.95);
+    }
+
+    .theme-icon {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease;
+    }
+
+    .theme-icon-sun {
+      transform: rotate(0deg) scale(1);
+      opacity: 1;
+    }
+
+    [data-theme="dark"] .theme-icon-sun {
+      transform: rotate(180deg) scale(0);
+      opacity: 0;
+    }
+
+    .theme-icon-moon {
+      transform: rotate(-180deg) scale(0);
+      opacity: 0;
+    }
+
+    [data-theme="dark"] .theme-icon-moon {
+      transform: rotate(0deg) scale(1);
+      opacity: 1;
+    }
+
+    /* ===== EXISTING STYLES ===== */
     .point-prompt-icon {
       width: 24px;
       height: 24px;
@@ -147,6 +407,37 @@
       <div class="flex items-center gap-3">
         <span class="text-sm text-gray-600">Any Patient</span>
         <span class="text-sm text-gray-500">00/00/0000</span>
+        <button type="button" id="scan-to-speak-btn"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
+          title="Scan to Speak – use your phone as a wireless microphone">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+          Scan to Speak
+        </button>
+        <span id="voice-connected-badge" class="hidden inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+          <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+          Voice
+        </span>
+        <button type="button" id="theme-toggle" title="Toggle theme" aria-label="Toggle dark mode">
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
         <button type="button" class="p-1.5 rounded hover:bg-gray-100" title="Print">🖨️</button>
         <button type="button" class="p-1.5 rounded hover:bg-gray-100" title="Refresh">🔄</button>
         <button type="button" class="p-1.5 rounded hover:bg-gray-100">⋯</button>
@@ -475,7 +766,90 @@
     </div>
   </div>
 
+  <!-- Scan to Speak QR modal -->
+  <div id="scan-to-speak-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[9998] flex items-center justify-center">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-2xl p-6 w-80 max-w-[90vw] text-center">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+          <h3 class="font-semibold text-gray-800">Scan to Speak</h3>
+        </div>
+        <button type="button" id="scan-to-speak-close" class="p-1 rounded hover:bg-gray-200 text-gray-500" aria-label="Close">✕</button>
+      </div>
+      <p class="text-sm text-gray-600 mb-4">Scan this QR code with your phone to use it as a wireless microphone.</p>
+      <div id="qr-code-container" class="flex justify-center mb-4">
+        <canvas id="qr-code-canvas"></canvas>
+      </div>
+      <div id="voice-connection-status" class="text-sm font-medium text-gray-500">
+        Generating session...
+      </div>
+      <p id="voice-network-hint" class="hidden text-xs text-gray-400 mt-2">Make sure your phone is on the same Wi-Fi network.</p>
+      <button type="button" id="voice-disconnect-btn" class="hidden mt-3 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded">
+        Disconnect
+      </button>
+    </div>
+  </div>
+
   <script>
+    // ===== THEME TOGGLE =====
+    (function () {
+      const THEME_KEY = 'point-and-prompt-theme';
+
+      function getPreferredTheme() {
+        const stored = localStorage.getItem(THEME_KEY);
+        if (stored) return stored;
+
+        // Check system preference
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          return 'dark';
+        }
+        return 'light';
+      }
+
+      function setTheme(theme) {
+        const html = document.documentElement;
+        if (theme === 'dark') {
+          html.setAttribute('data-theme', 'dark');
+        } else {
+          html.removeAttribute('data-theme');
+        }
+        localStorage.setItem(THEME_KEY, theme);
+      }
+
+      function toggleTheme() {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        setTheme(newTheme);
+      }
+
+      // Initialize theme on load
+      setTheme(getPreferredTheme());
+
+      // Attach toggle handler
+      document.addEventListener('DOMContentLoaded', function() {
+        const toggleBtn = document.getElementById('theme-toggle');
+        if (toggleBtn) {
+          toggleBtn.addEventListener('click', toggleTheme);
+        }
+      });
+
+      // Listen for system theme changes
+      if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+          if (!localStorage.getItem(THEME_KEY)) {
+            setTheme(e.matches ? 'dark' : 'light');
+          }
+        });
+      }
+    })();
+
+    // ===== POINT AND PROMPT =====
     (function () {
       window.openPointPromptMenu = function () {
         var m = document.getElementById('point-prompt-menu');
@@ -571,12 +945,19 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ question: question, context: context || null, history: history || [] })
         }).then(function (res) {
-          return res.json().then(function (data) {
+          return res.text().then(function (text) {
+            var data;
+            try {
+              data = text ? JSON.parse(text) : {};
+            } catch (e) {
+              if (!res.ok) throw new Error(res.status === 404 ? 'API not found. Add a Netlify Function or run the server locally.' : 'Invalid response from server');
+              throw new Error('Invalid response from server');
+            }
             if (!res.ok) throw new Error(data.error || res.statusText || 'Request failed');
-            return data.reply;
+            return typeof data.reply === 'string' ? data.reply : (data.reply || 'No reply returned.');
           });
         }).catch(function (err) {
-          if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
+          if (err.message && (err.message.indexOf('Failed to fetch') !== -1 || err.message.indexOf('API not found') !== -1 || err.message.indexOf('Invalid response') !== -1)) {
             return simulateReply(question, context, history);
           }
           throw err;
@@ -733,6 +1114,210 @@
         }
       });
 
+    })();
+
+    // ===== SCAN TO SPEAK =====
+    (function () {
+      var scanBtn = document.getElementById('scan-to-speak-btn');
+      var modal = document.getElementById('scan-to-speak-modal');
+      var closeBtn = document.getElementById('scan-to-speak-close');
+      var qrCanvas = document.getElementById('qr-code-canvas');
+      var statusEl = document.getElementById('voice-connection-status');
+      var networkHint = document.getElementById('voice-network-hint');
+      var disconnectBtn = document.getElementById('voice-disconnect-btn');
+      var connectedBadge = document.getElementById('voice-connected-badge');
+      var pointPromptInput = document.getElementById('point-prompt-input');
+      var followUpInput = document.getElementById('chat-follow-up');
+      var chatPanel = document.getElementById('chat-panel');
+      if (!scanBtn || !modal) return;
+
+      var voiceWs = null;
+      var sessionId = null;
+      var autoSubmit = false;
+
+      function generateSession() {
+        if (window.crypto && window.crypto.randomUUID) {
+          return window.crypto.randomUUID();
+        }
+        return 'xxxx-xxxx-xxxx-xxxx'.replace(/x/g, function () {
+          return Math.floor(Math.random() * 16).toString(16);
+        });
+      }
+
+      function updateStatus(text, colorClass) {
+        if (statusEl) {
+          statusEl.textContent = text;
+          statusEl.className = 'text-sm font-medium ' + colorClass;
+        }
+      }
+
+      function showModal() {
+        modal.classList.remove('hidden');
+      }
+
+      function hideModal() {
+        modal.classList.add('hidden');
+      }
+
+      function buildVoiceUrl(host, session, useHttps) {
+        var protocol = useHttps ? 'https:' : window.location.protocol;
+        return protocol + '//' + host + '/voice.html?session=' + session;
+      }
+
+      function renderQrCode(url) {
+        if (typeof QRCode !== 'undefined' && qrCanvas) {
+          QRCode.toCanvas(qrCanvas, url, { width: 200, margin: 2 }, function (err) {
+            if (err) console.error('QR code error:', err);
+          });
+        }
+      }
+
+      function connectDesktopWs() {
+        // Clean up previous connection
+        if (voiceWs) {
+          voiceWs.close();
+          voiceWs = null;
+        }
+
+        sessionId = generateSession();
+        var wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        var wsHost = window.location.host || 'localhost:3001';
+        var wsUrl = wsProtocol + '//' + wsHost + '/ws?role=desktop&session=' + sessionId;
+
+        voiceWs = new WebSocket(wsUrl);
+
+        voiceWs.onopen = function () {
+          updateStatus('Waiting for phone to connect...', 'text-gray-500');
+
+          // Fetch LAN IP for QR code – use HTTPS so phone's Web Speech API works
+          var hostname = window.location.hostname;
+          if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            fetch('/api/network-info')
+              .then(function (r) { return r.json(); })
+              .then(function (info) {
+                var httpsPort = info.httpsPort || (Number(info.port || 3001) + 1);
+                var lanHost = (info.addresses && info.addresses[0])
+                  ? info.addresses[0] + ':' + httpsPort
+                  : window.location.host;
+                var voiceUrl = buildVoiceUrl(lanHost, sessionId, true);
+                renderQrCode(voiceUrl);
+                if (networkHint) {
+                  networkHint.textContent = 'Same Wi-Fi required. Tap "Advanced \u2192 Proceed" on the certificate warning.';
+                  networkHint.classList.remove('hidden');
+                }
+              })
+              .catch(function () {
+                renderQrCode(buildVoiceUrl(window.location.host, sessionId, false));
+              });
+          } else if (window.location.protocol === 'https:') {
+            renderQrCode(buildVoiceUrl(window.location.host, sessionId, true));
+          } else {
+            // Non-localhost HTTP – try HTTPS on port+1
+            fetch('/api/network-info')
+              .then(function (r) { return r.json(); })
+              .then(function (info) {
+                var httpsPort = info.httpsPort || (Number(info.port || 3001) + 1);
+                var lanHost = window.location.hostname + ':' + httpsPort;
+                var voiceUrl = buildVoiceUrl(lanHost, sessionId, true);
+                renderQrCode(voiceUrl);
+                if (networkHint) {
+                  networkHint.textContent = 'Tap "Advanced \u2192 Proceed" on the certificate warning.';
+                  networkHint.classList.remove('hidden');
+                }
+              })
+              .catch(function () {
+                renderQrCode(buildVoiceUrl(window.location.host, sessionId, false));
+              });
+          }
+        };
+
+        voiceWs.onmessage = function (event) {
+          var msg;
+          try { msg = JSON.parse(event.data); } catch (e) { return; }
+
+          if (msg.type === 'status') {
+            if (msg.payload.event === 'partner_connected') {
+              updateStatus('Phone connected!', 'text-green-600');
+              if (connectedBadge) connectedBadge.classList.remove('hidden');
+              if (disconnectBtn) disconnectBtn.classList.remove('hidden');
+            } else if (msg.payload.event === 'partner_disconnected') {
+              updateStatus('Phone disconnected', 'text-red-500');
+              if (connectedBadge) connectedBadge.classList.add('hidden');
+            }
+          } else if (msg.type === 'text') {
+            handleVoiceText(msg.payload);
+          } else if (msg.type === 'config') {
+            if (msg.payload.autoSubmit !== undefined) {
+              autoSubmit = msg.payload.autoSubmit;
+            }
+          }
+        };
+
+        voiceWs.onclose = function () {
+          updateStatus('Disconnected', 'text-gray-400');
+          if (connectedBadge) connectedBadge.classList.add('hidden');
+          if (disconnectBtn) disconnectBtn.classList.add('hidden');
+        };
+
+        voiceWs.onerror = function () {
+          updateStatus('Connection error', 'text-red-500');
+        };
+      }
+
+      function handleVoiceText(payload) {
+        var text = payload.text || '';
+        var isFinal = payload.isFinal;
+
+        // Determine which input is active
+        var activeInput = null;
+        if (chatPanel && !chatPanel.classList.contains('translate-x-full')) {
+          activeInput = followUpInput;
+        } else {
+          activeInput = pointPromptInput;
+        }
+
+        if (activeInput) {
+          activeInput.value = text;
+          activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        if (isFinal && autoSubmit && activeInput) {
+          activeInput.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true
+          }));
+        }
+      }
+
+      // Open modal and start session
+      scanBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        showModal();
+        connectDesktopWs();
+      });
+
+      // Close modal (keep connection alive)
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function () {
+          hideModal();
+        });
+      }
+
+      // Disconnect
+      if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', function () {
+          if (voiceWs) voiceWs.close();
+          voiceWs = null;
+          sessionId = null;
+          updateStatus('Disconnected', 'text-gray-400');
+          if (connectedBadge) connectedBadge.classList.add('hidden');
+          disconnectBtn.classList.add('hidden');
+        });
+      }
+
+      // Close modal on backdrop click
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) hideModal();
+      });
     })();
   </script>
 </body>

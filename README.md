@@ -41,3 +41,15 @@ If your API runs elsewhere, set before loading the page:
 ```
 
 Then the prototype will POST to `https://your-api.example.com/api/ask` with the same JSON shape.
+
+## Deploy to Netlify (with real AI)
+
+The repo includes a Netlify Function so `/api/ask` works when deployed.
+
+1. Deploy the project to Netlify (drag-and-drop or Git).
+2. In Netlify: **Site settings → Environment variables** add:
+   - **Key:** `GEMINI_API_KEY`  
+   - **Value:** your Gemini API key  
+3. Trigger a new deploy so the function picks up the variable.
+
+The redirect in `netlify.toml` sends `POST /api/ask` to the function. If the function is not configured or returns a non-JSON response, the app falls back to a simulated reply and a short message instead of crashing.
